@@ -38,6 +38,45 @@ export async function fetcher<T>(
   return response.json();
 }
 
+export async function searchCoins(query: string): Promise<SearchCoin[]> {
+  if (!query) return [];
+
+  const data = await fetcher<{
+    coins: {
+      id: string;
+      name: string;
+      symbol: string;
+      market_cap_rank: number | null;
+      thumb: string;
+      large: string;
+    }[];
+  }>('/search', { query }, 0);
+
+  // Fetch 24h price changes for the top results in one call
+  const ids = data.coins.slice(0, 10).map((c) => c.id).join(',');
+
+  const priceData = await fetcher<
+    Record<string, { usd: number; usd_24h_change: number }>
+  >('/simple/price', {
+    ids,
+    vs_currencies: 'usd',
+    include_24hr_change: true,
+  }, 60);
+
+  return data.coins.slice(0, 10).map((coin) => ({
+    id: coin.id,
+    name: coin.name,
+    symbol: coin.symbol,
+    market_cap_rank: coin.market_cap_rank,
+    thumb: coin.thumb,
+    large: coin.large,
+    data: {
+      price: priceData[coin.id]?.usd ?? undefined,
+      price_change_percentage_24h: priceData[coin.id]?.usd_24h_change ?? 0,
+    },
+  }));
+}
+
 export async function getPools(
   id: string,
   network?: string | null,
