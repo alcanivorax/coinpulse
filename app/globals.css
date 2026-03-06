@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '../styles/trading.css';
 
 @custom-variant dark (&:is(.dark *));
 

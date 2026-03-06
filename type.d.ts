@@ -1,8 +1,8 @@
 type OHLCData = [number, number, number, number, number];
 
 interface NextPageProps {
-  params: Promise<{ [key: string]: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  params: { [key: string]: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
 interface CandlestickChartProps {
@@ -249,6 +249,7 @@ interface Category {
 
 interface UseCoinGeckoWebSocketProps {
   coinId: string;
+  coinSymbol: string;
   // poolId: string;
   liveInterval?: '1s' | '1m';
 }
@@ -316,3 +317,39 @@ interface PoolData {
   name: string;
   network: string;
 }
+
+type Order = {
+  id: string;
+  type: 'buy' | 'sell';
+  symbol: string;
+  coinId: string;
+  amount: number;
+  price: number;
+  total: number;
+  timestamp: number;
+};
+
+type PortfolioEntry = {
+  symbol: string;
+  coinId: string;
+  amount: number;
+  avgBuyPrice: number;
+};
+
+type TradingStore = {
+  balance: number;
+  portfolio: Record<string, PortfolioEntry>;
+  orders: Order[];
+  buyCoin: (coinId: string, symbol: string, amount: number, price: number) => string | null;
+  sellCoin: (coinId: string, symbol: string, amount: number, price: number) => string | null;
+  calculatePortfolioValue: (prices: Record<string, number>) => number;
+  resetPortfolio: () => void;
+};
+
+type TradeableCoin = {
+  id: string;
+  symbol: string;
+  name: string;
+  thumb: string;
+  currentPrice: number;
+};

@@ -4,38 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 
 const BINANCE_WS_BASE = 'wss://stream.binance.com:9443/ws';
 
-const COIN_ID_TO_BINANCE_SYMBOL: Record<string, string> = {
-  bitcoin: 'btcusdt',
-  ethereum: 'ethusdt',
-  solana: 'solusdt',
-  binancecoin: 'bnbusdt',
-  ripple: 'xrpusdt',
-  cardano: 'adausdt',
-  dogecoin: 'dogeusdt',
-  polkadot: 'dotusdt',
-  chainlink: 'linkusdt',
-  litecoin: 'ltcusdt',
-  avalanche: 'avaxusdt',
-  uniswap: 'uniusdt',
-  stellar: 'xlmusdt',
-  'shiba-inu': 'shibusdt',
-  tron: 'trxusdt',
-  'matic-network': 'maticusdt',
-  cosmos: 'atomusdt',
-  monero: 'xmrusdt',
-  okb: 'okbusdt',
-  filecoin: 'filusdt',
-};
+const toBinanceSymbol = (symbol?: string) => (symbol ? `${symbol.toLowerCase()}usdt` : null);
 
-const toBinanceSymbol = (coinId: string): string =>
-  COIN_ID_TO_BINANCE_SYMBOL[coinId] ?? `${coinId.replace(/-/g, '')}usdt`;
-
-const toBinanceInterval = (liveInterval: '1s' | '1m'): string =>
-  liveInterval === '1s' ? '1s' : '1m';
+const toBinanceInterval = (liveInterval: '1s' | '1m') => (liveInterval === '1s' ? '1s' : '1m');
 
 export const useCoinGeckoWebSocket = ({
+  coinSymbol,
   coinId,
-  liveInterval,
+  liveInterval = '1m',
 }: UseCoinGeckoWebSocketProps): UseCoinGeckoWebSocketReturn => {
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -45,8 +21,10 @@ export const useCoinGeckoWebSocket = ({
   const [isWsReady, setIsWsReady] = useState(false);
 
   useEffect(() => {
-    const symbol = toBinanceSymbol(coinId);
+    const symbol = toBinanceSymbol(coinSymbol);
+    if (!symbol) return;
     const interval = toBinanceInterval(liveInterval);
+
     const streamUrl = `${BINANCE_WS_BASE}/${symbol}@trade/${symbol}@ticker/${symbol}@kline_${interval}`;
 
     const ws = new WebSocket(streamUrl);
@@ -61,16 +39,18 @@ export const useCoinGeckoWebSocket = ({
         const tradePrice = parseFloat(msg.p);
         const tradeAmount = parseFloat(msg.q);
 
-        setTrades((prev) => [
-          {
-            price: tradePrice,
-            amount: tradeAmount,
-            value: tradePrice * tradeAmount,
-            type: msg.m ? 's' : 'b',
-            timestamp: msg.T,
-          },
-          ...prev,
-        ].slice(0, 7));
+        setTrades((prev) =>
+          [
+            {
+              price: tradePrice,
+              amount: tradeAmount,
+              value: tradePrice * tradeAmount,
+              type: msg.m ? 's' : 'b',
+              timestamp: msg.T,
+            },
+            ...prev,
+          ].slice(0, 7),
+        );
       }
 
       if (msg.e === '24hrTicker') {
@@ -79,7 +59,7 @@ export const useCoinGeckoWebSocket = ({
           coin: coinId,
           price: parseFloat(msg.c),
           change24h: parseFloat(msg.P),
-          marketCap: null,
+          marketCap: undefined,
           volume24h: parseFloat(msg.v),
           timestamp: msg.E,
         });
@@ -98,7 +78,7 @@ export const useCoinGeckoWebSocket = ({
       ws.close();
       wsRef.current = null;
     };
-  }, [coinId, liveInterval]);
+  }, [coinSymbol, coinId, liveInterval]);
 
   return { price, trades, ohlcv, isConnected: isWsReady };
 };

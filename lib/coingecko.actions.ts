@@ -1,21 +1,24 @@
 'use server';
 
+import { COMPILER_NAMES } from 'next/dist/shared/lib/constants';
 import qs from 'query-string';
 
 const BASE_URL = process.env.COINGECKO_BASE_URL;
 const API_KEY = process.env.COINGECKO_API_KEY;
 
-if (!BASE_URL) throw new Error('Could not get base url');
-if (!API_KEY) throw new Error('Could not get api key');
+if (!BASE_URL) throw new Error('Missing COINGECKO_BASE_URL');
+if (!API_KEY) throw new Error('Missing COINGECKO_API_KEY');
+
+const API_BASE = BASE_URL.replace(/\/$/, '');
 
 export async function fetcher<T>(
   endpoint: string,
-  params?: QueryParams,
+  params?: Record<string, string | number | boolean>,
   revalidate = 60,
 ): Promise<T> {
   const url = qs.stringifyUrl(
     {
-      url: `${BASE_URL}/${endpoint}`,
+      url: `${API_BASE}/${endpoint}`,
       query: params,
     },
     { skipEmptyString: true, skipNull: true },
@@ -23,16 +26,16 @@ export async function fetcher<T>(
 
   const response = await fetch(url, {
     headers: {
-      'x-cg-demo-api-key': API_KEY,
+      'x-cg-demo-api-key': API_KEY!,
       'Content-Type': 'application/json',
-    } as Record<string, string>,
+    },
     next: { revalidate },
   });
 
   if (!response.ok) {
-    const errorBody: CoinGeckoErrorBody = await response.json().catch(() => ({}));
+    const errorBody = await response.text();
 
-    throw new Error(`API Error: ${response.status}: ${errorBody.error || response.statusText} `);
+    throw new Error(`CoinGecko API Error ${response.status}: ${errorBody || response.statusText}`);
   }
 
   return response.json();
@@ -52,18 +55,23 @@ export async function searchCoins(query: string): Promise<SearchCoin[]> {
     }[];
   }>('/search', { query }, 0);
 
-  // Fetch 24h price changes for the top results in one call
-  const ids = data.coins.slice(0, 10).map((c) => c.id).join(',');
+  if (!data.coins.length) return [];
 
-  const priceData = await fetcher<
-    Record<string, { usd: number; usd_24h_change: number }>
-  >('/simple/price', {
-    ids,
-    vs_currencies: 'usd',
-    include_24hr_change: true,
-  }, 60);
+  const topCoins = data.coins.slice(0, 10);
 
-  return data.coins.slice(0, 10).map((coin) => ({
+  const ids = topCoins.map((c) => c.id).join(',');
+
+  const priceData = await fetcher<Record<string, { usd: number; usd_24h_change: number }>>(
+    '/simple/price',
+    {
+      ids,
+      vs_currencies: 'usd',
+      include_24hr_change: true,
+    },
+    60,
+  );
+
+  return topCoins.map((coin) => ({
     id: coin.id,
     name: coin.name,
     symbol: coin.symbol,
@@ -71,7 +79,7 @@ export async function searchCoins(query: string): Promise<SearchCoin[]> {
     thumb: coin.thumb,
     large: coin.large,
     data: {
-      price: priceData[coin.id]?.usd ?? undefined,
+      price: priceData[coin.id]?.usd,
       price_change_percentage_24h: priceData[coin.id]?.usd_24h_change ?? 0,
     },
   }));
@@ -89,24 +97,22 @@ export async function getPools(
     network: '',
   };
 
-  if (network && contractAddress) {
-    try {
+  try {
+    if (network && contractAddress) {
       const poolData = await fetcher<{ data: PoolData[] }>(
         `/onchain/networks/${network}/tokens/${contractAddress}/pools`,
       );
 
-      return poolData.data?.[0] ?? fallback;
-    } catch (error) {
-      console.log(error);
-      return fallback;
+      if (poolData.data?.length) {
+        return poolData.data[0];
+      }
     }
-  }
 
-  try {
     const poolData = await fetcher<{ data: PoolData[] }>('/onchain/search/pools', { query: id });
 
     return poolData.data?.[0] ?? fallback;
-  } catch {
+  } catch (error) {
+    console.error('Pool fetch error:', error);
     return fallback;
   }
 }

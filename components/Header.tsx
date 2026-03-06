@@ -37,6 +37,15 @@ const Header = ({ trendingCoins }: HeaderProps) => {
           >
             All Coins
           </Link>
+
+          <Link
+            href="/trade"
+            className={cn('nav-link', {
+              'is-active': pathname === '/trade',
+            })}
+          >
+            Trade
+          </Link>
         </nav>
       </div>
     </header>
