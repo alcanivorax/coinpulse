@@ -1,5 +1,6 @@
 import { fetcher } from '@/lib/coingecko.actions';
 import { TradingPanel } from '@/components/trade/TradingPanel';
+import { PERIOD_CONFIG } from '@/constants';
 
 async function getTradeableCoins(): Promise<TradeableCoin[]> {
   const data = await fetcher<
@@ -31,8 +32,29 @@ async function getTradeableCoins(): Promise<TradeableCoin[]> {
   }));
 }
 
+async function getInitialOhlcData(coinId: string): Promise<OHLCData[]> {
+  try {
+    const { days } = PERIOD_CONFIG['daily'];
+    return await fetcher<OHLCData[]>(
+      `coins/${coinId}/ohlc`,
+      { vs_currency: 'usd', days, precision: 'full' },
+      60,
+    );
+  } catch {
+    return [];
+  }
+}
+
 export default async function TradePage() {
-  const coins = await getTradeableCoins();
+  // Fetch coins list and the first coin's OHLC data in parallel so the
+  // chart has data ready the moment the page is rendered — no client-side
+  // loading delay on the initial view.
+  const [coins, initialOhlcData] = await Promise.all([
+    getTradeableCoins(),
+    // Bitcoin is always #1 by market cap; pre-fetching it covers the
+    // default selected coin without needing a sequential dependency.
+    getInitialOhlcData('bitcoin'),
+  ]);
 
   return (
     <main className="trade-page">
@@ -44,7 +66,7 @@ export default async function TradePage() {
           </p>
         </div>
 
-        <TradingPanel coins={coins} />
+        <TradingPanel coins={coins} initialOhlcData={initialOhlcData} />
       </div>
     </main>
   );

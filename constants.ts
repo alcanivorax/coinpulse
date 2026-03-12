@@ -93,13 +93,13 @@ export const getChartConfig = (
 
 // constants.ts
 export const PERIOD_CONFIG: Record<Period, { days: number | string }> = {
-  daily:    { days: 1 },
-  weekly:   { days: 7 },
-  monthly:  { days: 30 },
-  '3months':{ days: 90 },
-  '6months':{ days: 180 },
-  yearly:   { days: 365 },
-  max:      { days: 'max' },
+  daily: { days: 1 },
+  weekly: { days: 7 },
+  monthly: { days: 30 },
+  '3months': { days: 90 },
+  '6months': { days: 180 },
+  yearly: { days: 365 },
+  max: { days: 'max' },
 };
 
 export const PERIOD_BUTTONS: { value: Period; label: string }[] = [

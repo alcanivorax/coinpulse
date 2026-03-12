@@ -9,7 +9,6 @@ import {
   PERIOD_CONFIG,
 } from '@/constants';
 import { CandlestickSeries, createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
-import { fetcher } from '@/lib/coingecko.actions';
 import { convertOHLCData } from '@/lib/utils';
 
 const CandlestickChart = ({
@@ -30,24 +29,27 @@ const CandlestickChart = ({
 
   const [period, setPeriod] = useState(initialPeriod);
   const [ohlcData, setOhlcData] = useState<OHLCData[]>(data ?? []);
+  const [isLoading, setIsLoading] = useState(!data || data.length === 0);
   const [isPending, startTransition] = useTransition();
 
   const fetchOHLCData = async (selectedPeriod: Period) => {
     try {
+      setIsLoading(true);
       const { days } = PERIOD_CONFIG[selectedPeriod];
 
-      const newData = await fetcher<OHLCData[]>(`/coins/${coinId}/ohlc`, {
-        vs_currency: 'usd',
-        days,
-        // interval,
-        precision: 'full',
-      });
+      const res = await fetch(`/api/ohlc?coinId=${coinId}&days=${days}`);
+
+      if (!res.ok) throw new Error(`OHLC fetch failed: ${res.status}`);
+
+      const newData: OHLCData[] = await res.json();
 
       startTransition(() => {
         setOhlcData(newData ?? []);
+        setIsLoading(false);
       });
     } catch (e) {
       console.error('Failed to fetch OHLCData', e);
+      setIsLoading(false);
     }
   };
 
@@ -57,6 +59,17 @@ const CandlestickChart = ({
     setPeriod(newPeriod);
     fetchOHLCData(newPeriod);
   };
+
+  // Fetch data on mount and whenever the coin changes.
+  // Skip the fetch if static data was passed in (e.g. pre-fetched server-side).
+  useEffect(() => {
+    if (!coinId) return;
+    if (data && data.length > 0) return;
+
+    setOhlcData([]);
+    fetchOHLCData(period);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coinId]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -105,7 +118,6 @@ const CandlestickChart = ({
 
     if (liveOhlcv) {
       const liveTimestamp = liveOhlcv[0];
-
       const lastHistoricalCandle = convertedToSeconds[convertedToSeconds.length - 1];
 
       if (lastHistoricalCandle && lastHistoricalCandle[0] === liveTimestamp) {
@@ -142,14 +154,14 @@ const CandlestickChart = ({
               key={value}
               className={period === value ? 'config-button-active' : 'config-button'}
               onClick={() => handlePeriodChange(value)}
-              disabled={isPending}
+              disabled={isPending || isLoading}
             >
               {label}
             </button>
           ))}
         </div>
 
-        {liveInterval && (
+        {/*{liveInterval && (
           <div className="button-group">
             <span className="text-sm mx-2 font-medium text-purple-100/50">Update Frequency:</span>
             {LIVE_INTERVAL_BUTTONS.map(({ value, label }) => (
@@ -157,16 +169,24 @@ const CandlestickChart = ({
                 key={value}
                 className={liveInterval === value ? 'config-button-active' : 'config-button'}
                 onClick={() => setLiveInterval && setLiveInterval(value)}
-                disabled={isPending}
+                disabled={isPending || isLoading}
               >
                 {label}
               </button>
             ))}
           </div>
-        )}
+        )}*/}
       </div>
 
-      <div ref={chartContainerRef} className="chart" style={{ height }} />
+      <div className="relative">
+        {isLoading && (
+          <div
+            className="absolute inset-0 z-10 rounded-md animate-pulse bg-dark-400/40"
+            style={{ height }}
+          />
+        )}
+        <div ref={chartContainerRef} className="chart" style={{ height }} />
+      </div>
     </div>
   );
 };

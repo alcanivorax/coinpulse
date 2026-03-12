@@ -10,9 +10,10 @@ import CandlestickChart from '@/components/CandlestickChart';
 
 type TradingPanelProps = {
   coins: TradeableCoin[];
+  initialOhlcData?: OHLCData[];
 };
 
-export const TradingPanel = ({ coins }: TradingPanelProps) => {
+export const TradingPanel = ({ coins, initialOhlcData }: TradingPanelProps) => {
   const [selectedCoin, setSelectedCoin] = useState<TradeableCoin>(coins[0]);
   const livePricesRef = useRef<Record<string, number>>({});
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
@@ -32,6 +33,12 @@ export const TradingPanel = ({ coins }: TradingPanelProps) => {
     setLivePrice(null);
   }, []);
 
+  // Only use the pre-fetched data for the initially selected coin (coins[0]).
+  // When the user picks a different coin the chart remounts (key prop) and
+  // fetches fresh data on its own.
+  const chartData =
+    selectedCoin.id === coins[0].id && initialOhlcData?.length ? initialOhlcData : undefined;
+
   return (
     <div className="trading-panel">
       <CoinSelector coins={coins} selectedCoinId={selectedCoin.id} onSelect={handleSelectCoin} />
@@ -48,9 +55,11 @@ export const TradingPanel = ({ coins }: TradingPanelProps) => {
           </div>
           <div className="trading-panel__chart">
             <CandlestickChart
+              key={selectedCoin.id}
               coinId={selectedCoin.id}
-              coinSymbol={selectedCoin.symbol}
+              data={chartData}
               liveInterval="1m"
+              setLiveInterval={() => {}}
             />
           </div>
         </div>
