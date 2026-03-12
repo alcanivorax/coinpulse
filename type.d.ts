@@ -154,24 +154,51 @@ interface ExtendedPriceData {
 }
 
 interface WebSocketMessage {
+  // Generic
   type?: string;
-  c?: string;
-  ch?: string;
-  i?: string;
-  p?: number;
-  pp?: number;
-  pu?: number;
-  m?: number;
-  v?: number;
-  vo?: number;
-  o?: number;
-  h?: number;
-  l?: number;
-  t?: number;
-  to?: number;
-  ty?: string;
   channel?: string;
   identifier?: string;
+  ty?: string;
+  to?: number;
+  ch?: string;
+  i?: string;
+  pp?: number;
+  pu?: number;
+
+  // Binance event envelope
+  e?: string; // event type: 'trade' | '24hrTicker' | 'kline'
+  E?: number; // event time (ms)
+  s?: string; // symbol
+
+  // Trade event fields
+  p?: string | number; // price
+  q?: string | number; // quantity
+  T?: number; // trade time
+  m?: boolean | number; // buyer is market maker
+
+  // 24hrTicker fields
+  c?: string | number; // last / close price
+  P?: string | number; // 24h price change percent
+  o?: string | number; // open price
+  h?: string | number; // high price
+  l?: string | number; // low price
+  v?: string | number; // base asset volume
+  vo?: string | number; // quote asset volume
+
+  // kline event
+  k?: {
+    t: number; // open time
+    o: string; // open
+    h: string; // high
+    l: string; // low
+    c: string; // close
+    v: string; // volume
+    T: number; // close time
+    x: boolean; // is kline closed
+  };
+
+  // Legacy / other numeric fields
+  t?: number;
 }
 
 interface CoinDetailsData {

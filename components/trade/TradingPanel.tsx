@@ -13,8 +13,9 @@ type TradingPanelProps = {
   initialOhlcData?: OHLCData[];
 };
 
-export const TradingPanel = ({ coins, initialOhlcData }: TradingPanelProps) => {
-  const [selectedCoin, setSelectedCoin] = useState<TradeableCoin>(coins[0]);
+export const TradingPanel = ({ coins: initialCoins, initialOhlcData }: TradingPanelProps) => {
+  const [coins, setCoins] = useState<TradeableCoin[]>(initialCoins);
+  const [selectedCoin, setSelectedCoin] = useState<TradeableCoin>(initialCoins[0]);
   const livePricesRef = useRef<Record<string, number>>({});
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [livePrice, setLivePrice] = useState<number | null>(null);
@@ -33,23 +34,41 @@ export const TradingPanel = ({ coins, initialOhlcData }: TradingPanelProps) => {
     setLivePrice(null);
   }, []);
 
-  // Only use the pre-fetched data for the initially selected coin (coins[0]).
+  // If the coin is already in the list just select it.
+  // Otherwise append it and select it.
+  const handleAddCoin = useCallback((coin: TradeableCoin) => {
+    setCoins((prev) => {
+      if (prev.some((c) => c.id === coin.id)) return prev;
+      return [...prev, coin];
+    });
+    setSelectedCoin(coin);
+    setLivePrice(null);
+  }, []);
+
+  // Only use the pre-fetched data for the initially selected coin (initialCoins[0]).
   // When the user picks a different coin the chart remounts (key prop) and
   // fetches fresh data on its own.
   const chartData =
-    selectedCoin.id === coins[0].id && initialOhlcData?.length ? initialOhlcData : undefined;
+    selectedCoin.id === initialCoins[0].id && initialOhlcData?.length ? initialOhlcData : undefined;
 
   return (
     <div className="trading-panel">
-      <CoinSelector coins={coins} selectedCoinId={selectedCoin.id} onSelect={handleSelectCoin} />
+      <CoinSelector
+        coins={coins}
+        selectedCoinId={selectedCoin.id}
+        onSelect={handleSelectCoin}
+        onAddCoin={handleAddCoin}
+      />
 
       <div className="trading-panel__main">
         <div className="trading-panel__chart-area">
           <div className="trading-panel__chart-header">
             <h1 className="trading-panel__coin-name">{selectedCoin.name}</h1>
             <PriceTicker
+              key={selectedCoin.id}
               coinSymbol={selectedCoin.symbol}
               coinId={selectedCoin.id}
+              initialPrice={selectedCoin.currentPrice}
               onPriceUpdate={handlePriceUpdate}
             />
           </div>

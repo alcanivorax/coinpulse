@@ -57,12 +57,34 @@
 
 .coin-selector__item.is-active {
   border-color: var(--color-accent, #3b82f6);
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--color-accent, #3b82f6);
+  background: var(--color-accent, #3b82f6);
+  color: #ffffff;
 }
 
 .coin-selector__img {
   border-radius: 50%;
+}
+
+.coin-selector__search-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: 1px dashed var(--color-border, #1e293b);
+  background: transparent;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.coin-selector__search-btn:hover {
+  border-color: var(--color-accent, #3b82f6);
+  color: var(--color-accent, #3b82f6);
 }
 
 /* ---- Trading panel ---- */

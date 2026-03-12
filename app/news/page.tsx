@@ -1,27 +1,21 @@
+import { fetcher } from '@/lib/coingecko.actions';
 import { ExternalLink } from 'lucide-react';
 
 type NewsItem = {
-  id: string;
+  id: number;
   title: string;
   url: string;
-  source: string;
-  source_info: { img: string };
-  published_on: number; // unix timestamp
-  imageurl: string;
-  body: string;
-  categories: string;
-  tags: string;
+  news_site: string;
+  author: string;
+  created_at: number;
+  thumb_2x: string;
+  description: string;
 };
 
 async function getCryptoNews(): Promise<NewsItem[]> {
   try {
-    const res = await fetch(
-      'https://min-api.cryptocompare.com/data/v2/news/?lang=EN&limit=40&sortOrder=latest',
-      { next: { revalidate: 300 } },
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.Data ?? [];
+    const data = await fetcher<{ data: NewsItem[] }>('news', { page: 1, per_page: 40 }, 300);
+    return Array.isArray(data.data) ? data.data : [];
   } catch {
     return [];
   }
@@ -60,10 +54,10 @@ export default async function NewsPage() {
                 rel="noopener noreferrer"
                 className="news-card"
               >
-                {item.imageurl && (
+                {item.thumb_2x && (
                   <div className="news-card__img-wrap">
                     <img
-                      src={item.imageurl}
+                      src={item.thumb_2x}
                       alt={item.title}
                       className="news-card__img"
                       loading="lazy"
@@ -73,29 +67,24 @@ export default async function NewsPage() {
 
                 <div className="news-card__body">
                   <div className="news-card__meta">
-                    <span className="news-card__source">{item.source}</span>
+                    <span className="news-card__source">{item.news_site}</span>
                     <span className="news-card__dot">·</span>
-                    <span className="news-card__time">{timeAgo(item.published_on)}</span>
+                    <span className="news-card__time">{timeAgo(item.created_at)}</span>
+                    {item.author && (
+                      <>
+                        <span className="news-card__dot">·</span>
+                        <span className="news-card__time">{item.author}</span>
+                      </>
+                    )}
                   </div>
 
                   <h2 className="news-card__title">{item.title}</h2>
 
-                  <p className="news-card__excerpt">
-                    {item.body?.slice(0, 120).trim()}
-                    {item.body?.length > 120 ? '…' : ''}
-                  </p>
-
-                  {item.categories && (
-                    <div className="news-card__tags">
-                      {item.categories
-                        .split('|')
-                        .slice(0, 3)
-                        .map((cat) => (
-                          <span key={cat} className="news-card__tag">
-                            {cat.trim()}
-                          </span>
-                        ))}
-                    </div>
+                  {item.description && (
+                    <p className="news-card__excerpt">
+                      {item.description.slice(0, 120).trim()}
+                      {item.description.length > 120 ? '…' : ''}
+                    </p>
                   )}
                 </div>
 
